@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   etcd:
     image: quay.io/coreos/etcd:v3.5.5
-    container_name: milvus-etcd
+    container_name: milvus-etcd-new
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
@@ -19,7 +17,7 @@ services:
 
   milvus:
     image: milvusdb/milvus:v2.3.0
-    container_name: milvus-standalone
+    container_name: milvus-standalone-new
     command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: etcd:2379
@@ -77,6 +75,27 @@ services:
       - "9200:9200"
     networks:
       - rag_network
+
+  # 新增你的RAG后端服务
+  rag_app:
+    build: .
+    container_name: rag-web-app
+    ports:
+      - "8000:8000"
+    # 等待所有中间件启动完毕再启动后端
+    depends_on:
+      - postgres
+      - elasticsearch
+      - milvus
+      - minio
+    # 加载.env环境变量（数据库、密钥等配置）
+    env_file: .env
+    volumes:
+      # 本地代码热更新，修改代码容器自动生效
+      - ./:/app
+    networks:
+      - rag_network
+    restart: always
 
 volumes:
   etcd_data:
