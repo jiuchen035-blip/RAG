@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interview RAG Knowledge Base v2</title>
+    <style>
+        /* ===== 全局基础（与美化版一致） ===== */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: radial-gradient(circle at 10% 20%, #14141e, #0a0a0f);
+            color: #e8edf5;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 0;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 30, 40, 0.6);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4fc3f7;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6ad0ff;
+        }
+        h3 {
+            font-weight: 600;
+            font-size: 1.15rem;
+            letter-spacing: 0.01em;
+            color: #f0f4ff;
+        }
+        .tabs {
+            display: flex;
+            background: rgba(20, 20, 30, 0.75);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(40, 40, 60, 0.5);
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .tab {
+            padding: 16px 28px;
+            cursor: pointer;
+            color: #8a8a9e;
+            font-weight: 500;
+            font-size: 0.9rem;
+            letter-spacing: 0.02em;
+            border-bottom: 2px solid transparent;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+        .tab:hover {
+            color: #cfd7e6;
+        }
+        .tab.active {
+            color: #4fc3f7;
+            border-bottom-color: #4fc3f7;
+        }
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 20%;
+            width: 60%;
+            height: 2px;
+            background: #4fc3f7;
+            border-radius: 4px;
+            box-shadow: 0 0 16px rgba(79, 195, 247, 0.4);
+        }
+        .container {
+            padding: 28px 32px 60px;
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+        .card {
+            background: rgba(22, 22, 34, 0.75);
+            backdrop-filter: blur(8px);
+            border-radius: 20px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(40, 40, 60, 0.4);
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+            transition: border-color 0.25s, box-shadow 0.3s;
+        }
+        .card:hover {
+            border-color: rgba(79, 195, 247, 0.25);
+            box-shadow: 0 20px 56px rgba(0, 0, 0, 0.7);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .card-header h3 {
+            margin: 0;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        @media (max-width: 760px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .tabs {
+                padding: 0 12px;
+                overflow-x: auto;
+            }
+            .tab {
+                padding: 14px 16px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+            .container {
+                padding: 16px;
+            }
+            .card {
+                padding: 18px;
+            }
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #9aa2b8;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+        input,
+        select,
+        textarea {
+            background: rgba(30, 30, 44, 0.7);
+            border: 1px solid rgba(50, 50, 70, 0.5);
+            color: #e8edf5;
+            padding: 10px 14px;
+            border-radius: 12px;
+            width: 100%;
+            margin-bottom: 14px;
+            font-size: 0.9rem;
+            transition: border 0.25s, box-shadow 0.3s, background 0.3s;
+            font-family: inherit;
+            outline: none;
+            backdrop-filter: blur(4px);
+        }
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: #4fc3f7;
+            box-shadow: 0 0 0 4px rgba(79, 195, 247, 0.15);
+            background: rgba(30, 30, 50, 0.85);
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239aa2b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 40px;
+        }
+        .btn {
+            background: rgba(42, 42, 58, 0.7);
+            color: #d0d8ea;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.25s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            letter-spacing: 0.01em;
+            backdrop-filter: blur(4px);
+            border: 1px solid transparent;
+        }
+        .btn:hover {
+            background: rgba(55, 55, 80, 0.8);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            border-color: rgba(79, 195, 247, 0.3);
+        }
+        .btn:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .btn-primary {
+            background: #4fc3f7;
+            color: #0c0c0f;
+            border-color: #4fc3f7;
+        }
+        .btn-primary:hover {
+            background: #6ad0ff;
+            box-shadow: 0 8px 28px rgba(79, 195, 247, 0.35);
+            border-color: #6ad0ff;
+        }
+        .btn-primary:disabled {
+            background: #2a3a48;
+            color: #6a7a8a;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+            border-color: transparent;
+        }
+        .btn-danger {
+            background: #b71c1c;
+            color: #fff;
+            border-color: #b71c1c;
+        }
+        .btn-danger:hover {
+            background: #e53935;
+            box-shadow: 0 8px 28px rgba(229, 57, 53, 0.35);
+            border-color: #e53935;
+        }
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            border-radius: 8px;
+        }
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 4px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.15);
+            padding: 4px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th {
+            text-align: left;
+            padding: 12px 10px 10px 0;
+            color: #7a82a0;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid rgba(40, 40, 60, 0.5);
+        }
+        td {
+            padding: 12px 10px 12px 0;
+            border-bottom: 1px solid rgba(30, 30, 50, 0.3);
+            color: #d0d8ea;
+            transition: background 0.2s;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: rgba(79, 195, 247, 0.04);
+        }
+        td .btn {
+            margin-right: 6px;
+        }
+        /* 复选框美化 */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4fc3f7;
+            cursor: pointer;
+            margin: 0;
+            border-radius: 4px;
+        }
+        .progress {
+            height: 6px;
+            background: rgba(30, 30, 44, 0.6);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4fc3f7, #29b6f6);
+            width: 0%;
+            border-radius: 8px;
+            transition: width 0.4s ease;
+        }
+        .msg {
+            padding: 14px 24px;
+            border-radius: 14px;
+            margin: 16px 32px 0;
+            font-weight: 500;
+            display: none;
+            backdrop-filter: blur(8px);
+            border: 1px solid transparent;
+            animation: slideDown 0.3s ease;
+        }
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .msg-success {
+            background: rgba(79, 195, 247, 0.15);
+            border-color: rgba(79, 195, 247, 0.3);
+            color: #80d8ff;
+        }
+        .msg-error {
+            background: rgba(229, 57, 53, 0.15);
+            border-color: rgba(229, 57, 53, 0.3);
+            color: #ff8a80;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(12px);
+            z-index: 200;
+            padding: 40px 20px;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-content {
+            background: rgba(24, 24, 38, 0.92);
+            backdrop-filter: blur(12px);
+            border-radius: 24px;
+            padding: 28px 32px;
+            max-width: 1000px;
+            margin: 0 auto;
+            border: 1px solid rgba(60, 60, 80, 0.4);
+            box-shadow: 0 32px 96px rgba(0, 0, 0, 0.8);
+            animation: slideUp 0.35s ease;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .chat-wrap {
+            height: 420px;
+            overflow-y: auto;
+            padding: 16px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            margin: 12px 0 16px;
+            border: 1px solid rgba(40, 40, 60, 0.3);
+            backdrop-filter: blur(4px);
+        }
+        .chat-item {
+            margin-bottom: 18px;
+            display: flex;
+            max-width: 92%;
+        }
+        .chat-user {
+            flex-direction: row-reverse;
+            margin-left: auto;
+        }
+        .chat-ai {
+            flex-direction: row;
+            margin-right: auto;
+        }
+        .chat-bubble {
+            padding: 12px 20px;
+            border-radius: 18px;
+            line-height: 1.7;
+            word-wrap: break-word;
+            font-size: 0.92rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s;
+        }
+        .chat-user .chat-bubble {
+            background: linear-gradient(145deg, #1a2a3a, #0f1f2f);
+            color: #e0ecff;
+            border-top-right-radius: 4px;
+            border: 1px solid #2a4a5a;
+        }
+        .chat-ai .chat-bubble {
+            background: rgba(26, 26, 42, 0.8);
+            color: #e8edf5;
+            border-top-left-radius: 4px;
+            border: 1px solid #2a2a3e;
+            backdrop-filter: blur(4px);
+        }
+        .cot-block {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            border-left: 4px solid #ffd54f;
+        }
+        .cot-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .cot-title {
+            color: #ffd54f;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+        }
+        .cot-text {
+            white-space: pre-line;
+            font-size: 0.85rem;
+            color: #b0b8ce;
+            line-height: 1.6;
+        }
+        .chat-stats {
+            font-size: 0.7rem;
+            color: #6a7290;
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(40, 40, 60, 0.4);
+        }
+        .stat-card {
+            background: rgba(18, 18, 30, 0.6);
+            padding: 18px 20px;
+            border-radius: 14px;
+            text-align: center;
+            border: 1px solid rgba(40, 40, 60, 0.3);
+            backdrop-filter: blur(4px);
+        }
+        .stat-val {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #4fc3f7;
+            letter-spacing: -0.01em;
+        }
+        .stat-label {
+            font-size: 0.75rem;
+            color: #7a82a0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 4px;
+        }
+        .flex {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .mt-12 {
+            margin-top: 12px;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .text-muted {
+            color: #7a82a0;
+            font-size: 0.85rem;
+        }
+        #progressList {
+            color: #b0b8ce;
+            font-size: 0.9rem;
+            padding: 6px 0;
+        }
+        .inline-flex {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #configForm input {
+            background: rgba(18, 18, 30, 0.5);
+        }
+        .history-header .btn-danger {
+            background: #7a1a1a;
+            border-color: #7a1a1a;
+        }
+        .history-header .btn-danger:hover {
+            background: #aa2a2a;
+            border-color: #aa2a2a;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(26, 42, 58, 0.7);
+            color: #80d8ff;
+            font-size: 0.7rem;
+            padding: 2px 14px;
+            border-radius: 20px;
+            font-weight: 500;
+            border: 1px solid rgba(42, 74, 90, 0.4);
+            backdrop-filter: blur(4px);
+        }
+        .badge-success {
+            background: rgba(26, 58, 42, 0.7);
+            color: #80d8a0;
+            border-color: rgba(42, 90, 58, 0.4);
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #4fc3f7;
+            cursor: pointer;
+            margin-bottom: 0;
+            border-radius: 6px;
+        }
+        @media (max-width: 480px) {
+            .flex {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .flex-between {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== Message Toast ===== -->
+    <div id="msg" class="msg" style="margin:16px 32px 0;"></div>
+
+    <!-- ===== Tabs ===== -->
+    <div class="tabs">
+        <div class="tab active" onclick="switchTab(0)">📚 知识库</div>
+        <div class="tab" onclick="switchTab(1)">💬 面试问答</div>
+        <div class="tab" onclick="switchTab(2)">⚙️ 系统配置</div>
+    </div>
+
+    <!-- ===== TAB 0: 知识库管理 ===== -->
+    <div class="container" id="tab0">
+        <div class="card">
+            <div class="card-header">
+                <h3>📄 文档上传 &amp; 知识库管理</h3>
+                <span class="badge" id="docCountBadge">0 文档</span>
+            </div>
+            <div class="grid">
+                <div>
+                    <label>切分策略</label>
+                    <select id="strategy">
+                        <option value="markdown">Markdown 标题分层</option>
+                        <option value="fixed">固定 Token 长度</option>
+                        <option value="code">代码块隔离</option>
+                        <option value="semantic">LLM 语义智能</option>
+                    </select>
+                    <input type="file" id="fileInput" multiple />
+                    <button class="btn btn-primary" onclick="uploadFiles()">⬆ 上传与向量化</button>
+                </div>
+                <div>
+                    <label>批量运维</label>
+                    <select id="opsTech"><option value="">全部技术栈</option></select>
+                    <div class="btn-group">
+                        <button class="btn flash-btn" onclick="opsAction('deduplicate')">🔄 去重预览</button>
+                        <button class="btn flash-btn" onclick="opsAction('summarize')">📝 生成总结</button>
+                        <button class="btn flash-btn" onclick="opsAction('export')">📥 导出下载</button>
+                    </div>
+                    <button class="btn btn-danger mt-12" onclick="rebuildMilvus()">🗑 重建向量集合</button>
+                </div>
+            </div>
+            <div id="uploadProgress" class="card" style="display:none; margin-top:16px; padding:16px;">
+                <h4 style="font-size:0.9rem;">⏳ 上传进度</h4>
+                <div id="progressList"></div>
+                <div class="progress"><div class="progress-bar" id="uploadBar"></div></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>📑 文档列表</h3>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>文件名</th><th>分片数</th><th>状态</th><th>上传时间</th><th>操作</th></tr></thead>
+                    <tbody id="docList"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TAB 1: 面试问答 ===== -->
+    <div class="container" id="tab1" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h3>💬 面试问答</h3>
+                <div class="flex gap-8">
+                    <select id="modelSelect" style="width:auto; margin-bottom:0; padding:8px 32px 8px 14px;">
+                        <option value="auto">🤖 自动分流</option>
+                        <option value="flash">⚡ 工具模型 (Flash)</option>
+                        <option value="pro">🧠 深度模型 (Pro)</option>
+                    </select>
+                    <div class="inline-flex gap-8" style="margin-bottom:0;">
+                        <input type="checkbox" id="cotSwitch" checked>
+                        <label style="margin:0;">开启COT思维推理</label>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-wrap" id="chatBox"></div>
+            <div class="flex" style="gap:10px;">
+                <input type="text" id="question" placeholder="输入面试问题…" style="margin-bottom:0; flex:1;" />
+                <button class="btn btn-primary" onclick="askQuestion()">发送 ➤</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="history-header flex-between">
+                <h3>📜 历史问答</h3>
+                <div class="flex gap-8">
+                    <select id="exportType" style="width:160px; margin-bottom:0;">
+                        <option value="md">导出 Markdown(.md)</option>
+                        <option value="excel">导出 Excel(.csv)</option>
+                    </select>
+                    <!-- 新增：导出全部、导出选中、删除选中 -->
+                    <button class="btn btn-sm" onclick="exportHistory()">导出全部</button>
+                    <button class="btn btn-sm" onclick="exportSelected()">导出选中</button>
+                    <button class="btn btn-danger btn-sm" onclick="deleteSelected()">删除选中</button>
+                    <button class="btn btn-danger btn-sm" onclick="clearAllHistory()">清空全部</button>
+                </div>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:30px;"><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()" /></th>
+                            <th>问题</th>
+                            <th>模型</th>
+                            <th>成本</th>
+                            <th>时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="qaHistory"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== TAB 2: 系统配置 ===== -->
+    <div class="container" id="tab2" style="display:none;">
+        <div class="card">
+            <div class="card-header">
+                <h3>⚙️ 系统配置</h3>
+            </div>
+            <div id="configForm"></div>
+            <div class="btn-group mt-12">
+                <button class="btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+                <button class="btn" onclick="reloadConfig()">🔄 重载配置</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Modal: 分片预览 ===== -->
+    <div class="modal" id="chunkModal">
+        <div class="modal-content">
+            <div class="flex-between" style="margin-bottom:16px;">
+                <h3>🧩 分片预览与编辑</h3>
+                <button class="btn btn-sm" onclick="closeModal()">✕ 关闭</button>
+            </div>
+            <div id="chunkList"></div>
+            <button class="btn btn-primary mt-12" onclick="saveChunks()">💾 保存全部修改</button>
+        </div>
+    </div>
+
+    <!-- ===== Modal: 历史问答详情弹窗 ===== -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="flex-between" style="margin-bottom:16px;">
+                <h3>📄 问答完整详情</h3>
+                <button class="btn btn-sm" onclick="closeDetailModal()">✕ 关闭</button>
+            </div>
+            <div id="detailContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        //  API & 状态
+        // ============================================================
+        const api = '/api';
+        let flashEnabled = false;
+
+        // ============================================================
+        //  工具函数
+        // ============================================================
+        function showMsg(txt, err = false) {
+            const m = document.getElementById('msg');
+            m.innerText = txt;
+            m.className = 'msg ' + (err ? 'msg-error' : 'msg-success');
+            m.style.display = 'block';
+            clearTimeout(m._hide);
+            m._hide = setTimeout(() => { m.style.display = 'none'; }, 4500);
+        }
+
+        function toggleCot(el) {
+            const textDom = el.closest('.cot-block').querySelector('.cot-text');
+            if (textDom) textDom.style.display = textDom.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function updateFlashBtns() {
+            document.querySelectorAll('.flash-btn').forEach(b => b.disabled = !flashEnabled);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/\n/g, '<br>');
+        }
+
+        // ============================================================
+        //  Tab 切换
+        // ============================================================
+        function switchTab(i) {
+            document.querySelectorAll('.tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+            [0, 1, 2].forEach(idx => {
+                document.getElementById('tab' + idx).style.display = idx === i ? 'block' : 'none';
+            });
+            if (i === 0) loadDocs();
+            if (i === 1) loadHistory();
+            if (i === 2) loadConfig();
+        }
+
+        // ============================================================
+        //  配置
+        // ============================================================
+        async function loadConfig() {
+            try {
+                const res = await fetch(api + '/config');
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error || '加载配置失败');
+                const data = json.data;
+                flashEnabled = json.flash_enabled;
+                updateFlashBtns();
+                const form = document.getElementById('configForm');
+                form.innerHTML = '';
+                for (let k in data) {
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '12px';
+                    div.innerHTML = `<label>${k}</label><input type="text" id="cfg_${k}" value="${data[k]}" />`;
+                    form.appendChild(div);
+                }
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        async function saveConfig() {
+            const data = {};
+            document.querySelectorAll('#configForm input').forEach(i => {
+                data[i.id.replace('cfg_', '')] = i.value;
+            });
+            try {
+                const res = await fetch(api + '/config/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data })
+                });
+                const json = await res.json();
+                showMsg(json.msg || json.error || '已保存');
+                loadConfig();
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        async function reloadConfig() {
+            try {
+                const res = await fetch(api + '/config/reload', { method: 'POST' });
+                const json = await res.json();
+                showMsg(json.msg || json.error || '已重载');
+                loadConfig();
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        // ============================================================
+        //  文档上传
+        // ============================================================
+        async function uploadFiles() {
+            const fi = document.getElementById('fileInput');
+            if (!fi.files.length) return showMsg('请选择文件', true);
+            const fd = new FormData();
+            fd.append('strategy', document.getElementById('strategy').value);
+            for (let f of fi.files) fd.append('files', f);
+
+            const prog = document.getElementById('uploadProgress');
+            prog.style.display = 'block';
+            document.getElementById('progressList').innerHTML = '⏳ 向量化处理中…';
+            document.getElementById('uploadBar').style.width = '30%';
+
+            try {
+                const res = await fetch(api + '/upload', { method: 'POST', body: fd });
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error);
+                showMsg(json.msg);
+                document.getElementById('progressList').innerHTML = '✅ 处理完成';
+                document.getElementById('uploadBar').style.width = '100%';
+                loadDocs();
+            } catch (e) {
+                showMsg(e.message, true);
+                document.getElementById('progressList').innerHTML = '❌ 失败: ' + e.message;
+                document.getElementById('uploadBar').style.width = '0%';
+            }
+        }
+
+        // ============================================================
+        //  文档列表
+        // ============================================================
+        async function loadDocs() {
+            try {
+                const res = await fetch(api + '/documents');
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error);
+                const tb = document.getElementById('docList');
+                tb.innerHTML = '';
+                json.data.forEach(d => {
+                    const statusClass = d.status === 'ready' ? 'badge-success' : '';
+                    tb.innerHTML += `
+                        <tr>
+                            <td><span class="badge ${statusClass}">${d.filename}</span></td>
+                            <td>${d.chunks}</td>
+                            <td>${d.status}</td>
+                            <td class="text-muted">${d.created_at}</td>
+                            <td>
+                                <button class="btn btn-sm" onclick="openChunks('${d.id}')">🔍 分片</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteDoc('${d.id}')">🗑</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('docCountBadge').textContent = json.data.length + ' 文档';
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        // ============================================================
+        //  分片预览
+        // ============================================================
+        async function openChunks(docId) {
+            document.getElementById('chunkModal').style.display = 'block';
+            try {
+                const res = await fetch(api + `/chunks/${docId}?size=100`);
+                const json = await res.json();
+                const cl = document.getElementById('chunkList');
+                cl.innerHTML = '';
+                cl.dataset.docId = docId;
+                if (!json.data || !json.data.length) {
+                    cl.innerHTML = '<p class="text-muted">暂无分片</p>';
+                    return;
+                }
+                json.data.forEach(c => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.style.padding = '12px 16px';
+                    card.innerHTML = `
+                        <div class="flex-between">
+                            <label style="margin:0;font-weight:500;">🧩 分片 ${c.chunk_id}</label>
+                            <button class="btn btn-danger btn-sm" onclick="deleteChunk('${c.chunk_id}','${docId}')">🗑 删除</button>
+                        </div>
+                        <textarea id="chunk_${c.chunk_id}" rows="4" style="margin-top:8px;">${c.content}</textarea>
+                    `;
+                    cl.appendChild(card);
+                });
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        function closeModal() { document.getElementById('chunkModal').style.display = 'none'; }
+
+        async function saveChunks() {
+            const docId = document.getElementById('chunkList').dataset.docId;
+            const textareas = document.querySelectorAll('#chunkList textarea');
+            for (let ta of textareas) {
+                const cid = ta.id.replace('chunk_', '');
+                await fetch(api + '/chunks/edit', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chunk_id: cid, content: ta.value })
+                });
+            }
+            showMsg('✅ 保存成功');
+            closeModal();
+        }
+
+        async function deleteChunk(cid, docId) {
+            if (!confirm('删除此分片？')) return;
+            await fetch(api + `/chunks/${cid}`, { method: 'DELETE' });
+            showMsg('已删除');
+            openChunks(docId);
+        }
+
+        // ============================================================
+        //  删除文档
+        // ============================================================
+        async function deleteDoc(id) {
+            if (!confirm('确认删除该文档及全部分片？')) return;
+            const res = await fetch(api + `/documents/${id}`, { method: 'DELETE' });
+            const json = await res.json();
+            showMsg(json.msg || json.error);
+            loadDocs();
+        }
+
+        // ============================================================
+        //  重建 Milvus
+        // ============================================================
+        async function rebuildMilvus() {
+            if (!confirm('确认清空所有向量数据并重建集合？')) return;
+            const res = await fetch(api + '/milvus/rebuild', { method: 'POST' });
+            const json = await res.json();
+            showMsg(json.msg || json.error);
+        }
+
+        // ============================================================
+        //  批量运维
+        // ============================================================
+        async function opsAction(act) {
+            if (!flashEnabled) return showMsg('工具预处理模型未启用，无法操作', true);
+            const tech = document.getElementById('opsTech').value;
+            if (act === 'export') {
+                window.open(api + `/ops/export?tech=${tech}`);
+                return;
+            }
+            const res = await fetch(api + `/ops/${act}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tech })
+            });
+            const json = await res.json();
+            showMsg(JSON.stringify(json.msg || json.error || json));
+        }
+
+        // ============================================================
+        //  问答
+        // ============================================================
+        async function askQuestion() {
+            const qInput = document.getElementById('question');
+            const q = qInput.value.trim();
+            if (!q) return showMsg('请输入问题', true);
+            const chatBox = document.getElementById('chatBox');
+            const cotSwitch = document.getElementById("cotSwitch");
+            const enableCot = cotSwitch.checked;
+
+            chatBox.innerHTML += `
+                <div class="chat-item chat-user">
+                    <div class="chat-bubble">${escapeHtml(q)}</div>
+                </div>
+            `;
+            qInput.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch(api + '/qa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: q,
+                        model_type: document.getElementById('modelSelect').value,
+                        enable_cot: enableCot
+                    })
+                });
+                const json = await res.json();
+                if (!res.ok) throw new Error(json.error);
+
+                let cotHtml = '';
+                if (json.cot && json.cot.trim() !== '') {
+                    cotHtml = `
+                        <div class="cot-block">
+                            <div class="cot-head">
+                                <span class="cot-title">🧠 思维推理过程</span>
+                                <button class="btn btn-sm" style="padding:2px 10px;font-size:0.7rem;" onclick="toggleCot(this)">展开/收起</button>
+                            </div>
+                            <div class="cot-text">${escapeHtml(json.cot)}</div>
+                        </div>
+                    `;
+                }
+
+                chatBox.innerHTML += `
+                    <div class="chat-item chat-ai">
+                        <div class="chat-bubble">
+                            ${cotHtml}
+                            <div><strong>回答</strong><br>${escapeHtml(json.answer)}</div>
+                            <div class="chat-stats">
+                                🤖 ${json.model} &nbsp;·&nbsp; 输入 ${json.tokens_in} &nbsp;·&nbsp; 输出 ${json.tokens_out} &nbsp;·&nbsp; 费用 $${json.cost.toFixed(5)} &nbsp;·&nbsp; 缓存 ${json.cached}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatBox.scrollTop = chatBox.scrollHeight;
+                loadHistory();
+            } catch (e) {
+                showMsg(e.message, true);
+            }
+        }
+
+        // ============================================================
+        //  历史问答 加载列表 + 复选框支持
+        // ============================================================
+        async function loadHistory() {
+            try {
+                const res = await fetch(api + '/qa/history');
+                const json = await res.json();
+                const tb = document.getElementById('qaHistory');
+                tb.innerHTML = '';
+                (json.data || []).forEach(h => {
+                    tb.innerHTML += `
+                        <tr>
+                            <td><input type="checkbox" class="row-checkbox" data-id="${h.id}" /></td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(h.question)}">${escapeHtml(h.question)}</td>
+                            <td><span class="badge">${h.model}</span></td>
+                            <td>$${h.cost.toFixed(5)}</td>
+                            <td class="text-muted">${h.created_at}</td>
+                            <td>
+                                <button class="btn btn-sm" onclick="viewDetail(${h.id})">查看详情</button>
+                                <button class="btn btn-danger btn-sm" onclick="deleteSingleRecord(${h.id})">🗑</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                // 全选状态重置
+                document.getElementById('selectAll').checked = false;
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        // ============================================================
+        //  全选/取消全选
+        // ============================================================
+        function toggleAllCheckboxes() {
+            const checked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = checked);
+        }
+
+        // ============================================================
+        //  获取选中的 ID 列表
+        // ============================================================
+        function getSelectedIds() {
+            const ids = [];
+            document.querySelectorAll('.row-checkbox:checked').forEach(cb => {
+                ids.push(parseInt(cb.dataset.id));
+            });
+            return ids;
+        }
+
+        // ============================================================
+        //  导出选中（批量）
+        // ============================================================
+        async function exportSelected() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) {
+                showMsg('请至少勾选一条记录', true);
+                return;
+            }
+            const exportType = document.getElementById('exportType').value;
+            try {
+                const resp = await fetch(api + '/qa/history/export_batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids, export_type: exportType })
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || '导出失败');
+                }
+                // 下载文件
+                const blob = await resp.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `qa_export_selected.${exportType === 'md' ? 'md' : 'csv'}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showMsg('✅ 导出成功');
+            } catch (e) {
+                showMsg('导出失败：' + e.message, true);
+            }
+        }
+
+        // ============================================================
+        //  删除选中（批量）
+        // ============================================================
+        async function deleteSelected() {
+            const ids = getSelectedIds();
+            console.log("选中ID：", ids);
+            if (ids.length === 0) {
+                showMsg('请至少勾选一条记录', true);
+                return;
+            }
+            if (!confirm(`确定删除选中的 ${ids.length} 条记录吗？此操作不可恢复！`)) return;
+            try {
+                // 地址改为 batch_delete，请求方式 POST
+                const resp = await fetch(api + '/qa/history/batch_delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: ids })
+                });
+                const json = await resp.json();
+                console.log("后端返回：", json);
+
+                if (!resp.ok) {
+                    const errMsg = json.detail || json.msg || "批量删除失败";
+                    throw new Error(errMsg);
+                }
+                showMsg(json.msg || '删除成功');
+                loadHistory();
+            } catch (e) {
+                console.error("批量删除报错：", e);
+                showMsg('删除失败：' + e.message, true);
+            }
+        }
+
+        // ============================================================
+        //  单条删除（已有）
+        // ============================================================
+        async function deleteSingleRecord(recordId) {
+            if (!confirm('确定删除这条问答记录？')) return;
+            try {
+                const res = await fetch(`${api}/qa/history/${recordId}`, { method: 'DELETE' });
+                const data = await res.json();
+                showMsg(data.msg);
+                loadHistory();
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        // ============================================================
+        //  清空全部（已有）
+        // ============================================================
+        async function clearAllHistory() {
+            if (!confirm('危险操作！确定清空所有问答历史？')) return;
+            try {
+                const res = await fetch(`${api}/qa/history/all`, { method: 'DELETE' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || '接口异常');
+                showMsg(data.msg);
+                loadHistory();
+            } catch (e) { showMsg(e.message, true); }
+        }
+
+        // ============================================================
+        //  导出全部（已有）
+        // ============================================================
+        async function exportHistory() {
+            const type = document.getElementById("exportType").value;
+            const url = `${api}/qa/history/export?export_type=${type}`;
+            window.open(url, "_blank");
+        }
+
+        // ============================================================
+        //  查看详情（已有）
+        // ============================================================
+        async function viewDetail(recordId) {
+            try {
+                const res = await fetch(`${api}/qa/history/detail/${recordId}`);
+                const json = await res.json();
+                if (!json.success) {
+                    showMsg(json.msg, true);
+                    return;
+                }
+                const d = json.data;
+                const html = `
+                <div style="line-height:1.7;">
+                    <p><strong>记录ID：</strong>${d.id}</p>
+                    <p><strong>提问时间：</strong>${d.created_at}</p>
+                    <p><strong>使用模型：</strong>${d.model}</p>
+                    <p><strong>输入Token：</strong>${d.tokens_in} &nbsp;&nbsp; 输出Token：${d.tokens_out}</p>
+                    <p><strong>消耗费用：</strong>$${d.cost.toFixed(5)}</p>
+                    <hr style="margin:16px 0; border-color:#282834;">
+                    <h4>用户问题</h4>
+                    <div style="background:rgba(17,17,24,0.5); padding:14px; border-radius:12px; margin:10px 0; white-space:pre-line;">${escapeHtml(d.question)}</div>
+                    <h4>AI回答</h4>
+                    <div style="background:rgba(17,17,24,0.5); padding:14px; border-radius:12px; white-space:pre-line;">${escapeHtml(d.answer)}</div>
+                </div>
+                `;
+                document.getElementById("detailContent").innerHTML = html;
+                document.getElementById("detailModal").style.display = "block";
+            } catch (e) {
+                showMsg("加载详情失败：" + e.message, true);
+            }
+        }
+
+        function closeDetailModal() {
+            document.getElementById("detailModal").style.display = "none";
+        }
+
+        // ============================================================
+        //  初始化
+        // ============================================================
+        loadConfig();
+        loadDocs();
+    </script>
+</body>
+</html>

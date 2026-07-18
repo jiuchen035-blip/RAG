@@ -1,0 +1,32 @@
+# 虚拟环境
+venv/
+env/
+.venv/
+
+# Python 缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# 环境与敏感配置
+.env
+
+# 日志与临时文件
+logs/
+*.log
+textpg.py
+test_*.py
+
+# 上传缓存
+temp_uploads/
+
+# IDE 配置
+.vscode/
+.idea/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
